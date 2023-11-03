@@ -85,12 +85,12 @@ torch.manual_seed(0)
 
 SRC_VOCAB_SIZE = len(vocab_transform[SRC_LANGUAGE])
 TGT_VOCAB_SIZE = len(vocab_transform[TGT_LANGUAGE])
-EMB_SIZE = 512
+EMB_SIZE = 768
 NHEAD = 8
 FFN_HID_DIM = 512
 BATCH_SIZE = 128
-NUM_ENCODER_LAYERS = 3
-NUM_DECODER_LAYERS = 3
+NUM_ENCODER_LAYERS = 6
+NUM_DECODER_LAYERS = 6
 
 print("Creating model...")
 transformer = Seq2SeqTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE,
@@ -148,7 +148,6 @@ def train_epoch(model, optimizer, epoch, train_start_time, save_every):
     losses = 0
     train_iter = Multi30k(split='train', language_pair=(SRC_LANGUAGE, TGT_LANGUAGE))
     train_dataloader = DataLoader(train_iter, batch_size=BATCH_SIZE, collate_fn=collate_fn)
-    total_batches = len(train_iter)
 
     for (i, (src, tgt)) in enumerate(train_dataloader):
         src = src.to(DEVICE)
@@ -170,15 +169,15 @@ def train_epoch(model, optimizer, epoch, train_start_time, save_every):
         loss_val = loss.item()
         losses += loss_val
         
-        if i % 2 == 0:
+        if i % 10 == 0:
             end_time = timer()
             total_time = (end_time - train_start_time)
             print(f"Epoch {epoch} | Batch {i} | Loss {loss_val} | Time {total_time:.3f}")
             
-        if i % save_every == 0:
-            filepath = "transformer.pth"
-            torch.save(transformer.state_dict(), filepath)
-            print(f"Saved model {filepath} at epoch {epoch} batch {i}")
+        # if i % save_every == 0:
+        #     filepath = "transformer.pth"
+        #     torch.save(transformer.state_dict(), filepath)
+        #     print(f"Saved model {filepath} at epoch {epoch} batch {i}")
 
     return losses / len(list(train_dataloader))
 
@@ -207,8 +206,8 @@ def evaluate(model):
     return losses / len(list(val_dataloader))
 
 from timeit import default_timer as timer
-NUM_EPOCHS = 18
-SAVE_EVERY = 100
+NUM_EPOCHS = 50
+SAVE_EVERY = 1000
 
 print("Start training...")
 train_start_time = timer()
@@ -219,6 +218,10 @@ for epoch in range(1, NUM_EPOCHS+1):
     end_time = timer()
     val_loss = evaluate(transformer)
     print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, Val loss: {val_loss:.3f}, "f"Epoch time = {(end_time - start_time):.3f}s"))
+
+    # save model after every epoch
+    filepath = f"transformer_epoch_{epoch}.pth"
+    torch.save(transformer.state_dict(), filepath)
 
 
 # function to generate output sequence using greedy algorithm

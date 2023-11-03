@@ -88,6 +88,8 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
     src = src.to(DEVICE)
     src_mask = src_mask.to(DEVICE)
 
+    print("src", src.shape)
+
     memory = model.encode(src, src_mask)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(DEVICE)
     for i in range(max_len-1):
@@ -95,6 +97,10 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
                     .type(torch.bool)).to(DEVICE)
         out = model.decode(ys, memory, tgt_mask)
+
+        print("out", out.shape)
+
+
         out = out.transpose(0, 1)
         prob = model.generator(out[:, -1])
         _, next_word = torch.max(prob, dim=1)
@@ -102,7 +108,10 @@ def greedy_decode(model, src, src_mask, max_len, start_symbol):
 
         ys = torch.cat([ys,
                         torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
+        print("ys", ys.shape)
+        print(f"<{i}> next_word: {next_word}")
         if next_word == EOS_IDX:
+            print("END OF SENTENCE")
             break
     return ys
 
@@ -122,19 +131,21 @@ print(f"Loading model {model_file}...")
 
 SRC_VOCAB_SIZE = len(vocab_transform[SRC_LANGUAGE])
 TGT_VOCAB_SIZE = len(vocab_transform[TGT_LANGUAGE])
-EMB_SIZE = 512
+EMB_SIZE = 768
 NHEAD = 8
 FFN_HID_DIM = 512
 BATCH_SIZE = 128
-NUM_ENCODER_LAYERS = 3
-NUM_DECODER_LAYERS = 3
+NUM_ENCODER_LAYERS = 6
+NUM_DECODER_LAYERS = 6
 
 print("Creating model...")
 model = Seq2SeqTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE,
                                  NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
 model.load_state_dict(torch.load("transformer.pth"))
 model.eval()
+model = model.to(DEVICE)
 
-sentence = "Hello World"
+
+sentence = "Hallo Welt"
 translation = translate(model, sentence)
 print(f"{sentence} -> {translation}")
